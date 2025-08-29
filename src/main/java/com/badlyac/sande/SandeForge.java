@@ -42,7 +42,7 @@ public class SandeForge {
     private static final Map<UUID, Integer> ACTIVE_REMAIN = new HashMap<>();
 
     public SandeForge() {
-        var modBus   = FMLJavaModLoadingContext.get().getModEventBus();
+        var modBus   = FMLJavaModLoadingContext.get().getModEventBus(); // get() is deprecated since version 1.21.1 and marked for removal
         var forgeBus = MinecraftForge.EVENT_BUS;
 
         forgeBus.register(this);
