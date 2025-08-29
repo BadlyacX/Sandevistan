@@ -1,0 +1,23 @@
+{
+  "targets": [
+    "swap"
+  ],
+  "passes": [
+    {
+      "name": "sande_chromatic",
+      "intarget": "minecraft:main",
+      "outtarget": "swap",
+      "auxtargets": [],
+      "uniforms": [
+        { "name": "Time", "values": [0.0] },
+        { "name": "Strength", "values": [0.6] },
+        { "name": "Tint", "values": [0.2, 1.0, 0.85] }
+      ]
+    },
+    {
+      "name": "blit",
+      "intarget": "swap",
+      "outtarget": "minecraft:main"
+    }
+  ]
+}

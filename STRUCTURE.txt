@@ -1,0 +1,26 @@
+src/
+ └─ main/
+     ├─ java/
+     │   └─ com/
+     │       └─ badlyac/
+     │           └─ sande/
+     │               ├─ SandeForge.java        // 主模組類，註冊事件、指令 /sande、高速狀態邏輯
+     │               ├─ FreezeManager.java     // 管理凍結半徑邏輯，處理非高速實體的暫停與恢復
+     │               └─ client/
+     │                   ├─ SandeClientState.java // 客端狀態管理：是否 ACTIVE、拖影樣本緩存
+     │                   ├─ ClientTickHook.java   // 客端 tick 事件：收集樣本
+     │                   ├─ TrailRenderHook.java  // 客端渲染：RenderPlayerEvent.Post 畫藍綠殘影
+     │                   ├─ SandePostFX.java      // 客端 PostChain shader 啟停與更新
+     │                   └─ PostChainHook.java    // 客端 RenderLevelStageEvent 事件，套用 shader
+     │
+     └─ resources/
+         ├─ META-INF/
+         │   └─ mods.toml        // Forge 模組描述檔
+         │
+         └─ assets/
+             └─ sande/
+                 └─ shaders/
+                     ├─ post/
+                     │   └─ sande.json             // Shader pipeline 定義
+                     └─ core/
+                         └─ sande_chromatic.fsh    // GLSL fragment shader，藍綠色偏 + 模糊效果

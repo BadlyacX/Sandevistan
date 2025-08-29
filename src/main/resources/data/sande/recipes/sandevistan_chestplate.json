@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "O O",
+    "NSN",
+    "OEO"
+  ],
+  "key": {
+    "O": { "item": "minecraft:obsidian" },
+    "N": { "item": "minecraft:netherite_ingot" },
+    "S": { "item": "minecraft:nether_star" },
+    "E": { "item": "minecraft:emerald" }
+  },
+  "result": {
+    "item": "sande:sandevistan",
+    "count": 1,
+    "nbt": "{Unbreakable:1b,display:{Name:'{\"text\":\"Sandevistan\",\"color\":\"aqua\",\"italic\":false}'},Enchantments:[{id:\"minecraft:protection\",lvl:4s},{id:\"minecraft:fire_protection\",lvl:4s},{id:\"minecraft:blast_protection\",lvl:4s},{id:\"minecraft:projectile_protection\",lvl:4s},{id:\"minecraft:thorns\",lvl:3s},{id:\"minecraft:unbreaking\",lvl:3s},{id:\"minecraft:mending\",lvl:1s}]}"
+  }
+}

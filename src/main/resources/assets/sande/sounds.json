@@ -1,0 +1,21 @@
+{
+  "sande_start": {
+    "subtitle": "Sandevistan engaged",
+    "sounds": [
+      {
+        "name": "sande:sfx/start",
+        "stream": false
+      }
+    ]
+  },
+  "sande_end": {
+    "subtitle": "Sandevistan disengaged",
+    "sounds": [
+      {
+        "name": "sande:sfx/end",
+        "stream": false
+      }
+    ]
+  }
+}
+
