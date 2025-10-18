@@ -1,135 +1,173 @@
 package com.badlyac.sande.client;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Iterator;
+import java.util.*;
 
+/**
+ * 多人版客端狀態（含相容層）：
+ * - 新：以每位玩家 UUID 管理啟用與殘影樣本。
+ * - 舊相容：保留 ACTIVE 欄位與 setActive(boolean) 供既有程式碼呼叫。
+ */
 public final class SandeClientState {
-    public static boolean ACTIVE = false;
-
-    // 進/退場計時
-    public static final int ENTRY_TICKS_MAX = 10;  // 進場約 0.5s
-    public static final int EXIT_TICKS_MAX  = 8;   // 退場約 0.4s
-    public static int entryTicks = 0;
-    public static int exitTicks  = 0;
-    public static int fpSwitchCooldown = 0; // 切到第一人稱後，前幾個 tick 更嚴格處理
-    private static boolean lastFirstPerson = false;
-
-    // 濾鏡強度（0~1，WorldTintOverlay 會讀）
-    public static float tintStrength = 0f;
-
-    // === 你的殘影資料（保留你先前的版本） ===
-    private static final int SAMPLE_INTERVAL = 0; // 每0.5s產生一個殘影
-    private static final int SAMPLE_LIFETIME = 20; // 殘影存在1秒
-    private static final Deque<Sample> TRAIL = new ArrayDeque<>();
-    private static int sampleCooldown = 0;
-
     private SandeClientState() {}
 
-    public static void updateCameraState(boolean firstPerson, Player p, double camX, double camY, double camZ) {
-        if (firstPerson != lastFirstPerson) {
-            if (firstPerson) {
-                // 剛切進第一人稱：開 6tick 冷卻，並清掉「貼臉」樣本
-                fpSwitchCooldown = 6;
-                // 把距離鏡頭 < 0.8 格的樣本移除，避免瞬間擋住
-                TRAIL.removeIf(s -> {
-                    double dx = s.x - camX, dy = s.y - camY, dz = s.z - camZ;
-                    return (dx*dx + dy*dy + dz*dz) < (0.8 * 0.8);
-                });
+    /* ===================== 參數 ===================== */
+    public static final int   MAX_SAMPLES = 20;        // 最多殘影數
+    public static final int   SAMPLE_INTERVAL_TICKS = 2; // 每 0.1s 採樣一次（20tps 假設）
+
+    /* ===================== 舊版相容層 ===================== */
+    /** 舊版全域旗標（保留相容）：等同於本地玩家是否啟用 */
+    @Deprecated public static boolean ACTIVE = false;
+
+    /** 本地玩家啟用旗標（新） */
+    public static boolean LOCAL_ACTIVE = false;
+
+    /** 進/出場動畫與濾鏡（你現有 UI 用到） */
+    public static float entryTicks = 0f, exitTicks = 0f;
+    public static float tintStrength = 0f;
+
+    /* ===================== 多人狀態 ===================== */
+    private static final Map<UUID, Trail> TRAILS = new HashMap<>();
+    private static final Deque<Sample> EMPTY = new ArrayDeque<>();
+
+    private static Trail trailOf(UUID id) {
+        return TRAILS.computeIfAbsent(id, k -> new Trail());
+    }
+
+    /* ===================== 對外 API（新） ===================== */
+
+    /** 設定某位玩家（subject）的啟用狀態；S2C 封包會呼叫這個。 */
+    public static void setActiveFor(UUID subject, boolean active) {
+        if (subject == null) return;
+        Trail t = trailOf(subject);
+        t.active = active;
+
+        Minecraft mc = Minecraft.getInstance();
+        boolean isLocal = (mc != null && mc.player != null && subject.equals(mc.player.getUUID()));
+
+        if (isLocal) {
+            LOCAL_ACTIVE = active;
+            ACTIVE = active; // 舊欄位同步
+            if (active) {
+                entryTicks = 6f; exitTicks = 0f;
+                // 進場：立刻拉起濾鏡
+                tintStrength = Math.min(1f, tintStrength + 0.35f);
             } else {
-                // 切回第三人稱就關閉冷卻
-                fpSwitchCooldown = 0;
+                // 關閉：啟動退場動畫；確保之後會降到 0
+                exitTicks = 6f; entryTicks = 0f;
+                // 立刻停止新增樣本並清空當前樣本，避免「殘影留著」
+                t.samples.clear();
             }
-            lastFirstPerson = firstPerson;
-        }
-    }
-
-    public static void setActive(boolean active) {
-        if (active) {
-            ACTIVE = true;
-            exitTicks = 0;
-            entryTicks = ENTRY_TICKS_MAX;
-            tintStrength = 0f; // 進場從0拉上去
-            TRAIL.clear();
-            sampleCooldown = 0;
         } else {
-            // 結束：啟動退場動畫，保持 ACTIVE = false（渲染端用 exitTicks 判斷繼續顯示）
-            ACTIVE = false;
-            entryTicks = 0;
-            exitTicks = EXIT_TICKS_MAX;
-            // 退場起點給一個基礎強度，避免立刻變黑
-            tintStrength = Math.max(tintStrength, 0.6f);
-            TRAIL.clear(); // 結束就清空殘影
-            sampleCooldown = 0;
+            // 非本地：不要做畫面動畫；直接收乾淨
+            if (!active) {
+                t.samples.clear();
+            }
         }
     }
 
-    public static void tickClient(Player p) {
-        // 殘影維護（與先前相同）
-        if (!(ACTIVE || exitTicks > 0 || entryTicks > 0)) {
-            TRAIL.clear();
-            return;
-        }
 
-        // 更新殘影壽命
-        Iterator<Sample> it = TRAIL.iterator();
-        while (it.hasNext()) {
-            Sample s = it.next();
-            s.life--;
-            if (s.life <= 0) it.remove();
-        }
-
-        if (!ACTIVE) return; // 結束動畫期間不再新增殘影
-
-        if (sampleCooldown > 0) {
-            sampleCooldown--;
-            return;
-        }
-        sampleCooldown = SAMPLE_INTERVAL;
-
-        TRAIL.addFirst(new Sample(
-                (float) p.getX(), (float) p.getY(), (float) p.getZ(),
-                p.yBodyRot, p.getYHeadRot(), p.getXRot(),
-                p.walkAnimation.position(), p.walkAnimation.speed(),
-                p.tickCount, SAMPLE_LIFETIME
-        ));
+    /** 查詢某位玩家是否啟用 Sande（用於渲染判斷） */
+    public static boolean isActive(UUID id) {
+        Trail t = TRAILS.get(id);
+        return t != null && t.active;
     }
 
-    // 讓 CameraShakeHook 每幀呼叫：更新進/退場曲線
-    public static void tickEntryExitCurves() {
-        // 進場：0 → 0.85 線性/略加速
-        if (entryTicks > 0) {
-            entryTicks--;
-            float t = 1f - (float) entryTicks / ENTRY_TICKS_MAX; // 0→1
-            tintStrength = Math.min(0.85f, t * 0.9f);
-        }
-        // 退場：0.6 → 0 線性/略加速
-        if (exitTicks > 0) {
-            float f = (float) exitTicks / EXIT_TICKS_MAX; // 1→0（因為先讀後--）
-            tintStrength = Math.max(0f, 0.7f * f);
-            exitTicks--;
-        }
-        if (fpSwitchCooldown > 0) fpSwitchCooldown--;
+    /** 取得某位玩家的殘影樣本（只讀用） */
+    public static Deque<Sample> samplesOf(UUID id) {
+        Trail t = TRAILS.get(id);
+        return (t == null) ? EMPTY : t.samples;
     }
 
-    public static Deque<Sample> samples() { return TRAIL; }
+    /** 客端每 tick 呼叫：對啟用中的玩家採樣、更新濾鏡動畫 */
+    public static void tickClientAll(Minecraft mc) {
+        if (mc == null || mc.level == null) return;
 
-    public static final class Sample {
-        public final float x, y, z;
-        public final float bodyYaw, headYaw, headPitch;
-        public final float limbSwing, limbSwingAmount;
-        public final float ageTicks;
-        public int life;
-        public Sample(float x, float y, float z,
-                      float bodyYaw, float headYaw, float headPitch,
-                      float limbSwing, float limbSwingAmount,
-                      float ageTicks, int life) {
-            this.x=x; this.y=y; this.z=z;
-            this.bodyYaw=bodyYaw; this.headYaw=headYaw; this.headPitch=headPitch;
-            this.limbSwing=limbSwing; this.limbSwingAmount=limbSwingAmount;
-            this.ageTicks=ageTicks; this.life=life;
+        // 對「啟用中的玩家」按節流採樣
+        for (Player p : mc.level.players()) {
+            UUID id = p.getUUID();
+            Trail t = TRAILS.get(id);
+            if (t == null || !t.active) continue;
+
+            if (--t.sampleCooldown > 0) continue;
+            t.sampleCooldown = SAMPLE_INTERVAL_TICKS;
+
+            if (t.samples.size() >= MAX_SAMPLES) t.samples.removeLast();
+            t.samples.addFirst(new Sample(
+                    (float)p.getX(), (float)p.getY(), (float)p.getZ(),
+                    p.getYRot(), p.getXRot(),
+                    p.yBodyRot, p.yHeadRot,
+                    p.walkAnimation.position(), p.walkAnimation.speed(),
+                    p.tickCount
+            ));
         }
+
+        // 濾鏡進退場動畫
+        if (entryTicks > 0f) {
+            entryTicks -= 1f;
+            tintStrength = Math.min(1f, tintStrength + 0.12f);
+        } else if (exitTicks > 0f) {
+            exitTicks -= 1f;
+            tintStrength = Math.max(0f, tintStrength - 0.12f);
+        } else if (!LOCAL_ACTIVE) {
+            tintStrength = Math.max(0f, tintStrength - 0.04f);
+        }
+
+        if (!LOCAL_ACTIVE && entryTicks <= 0f && exitTicks <= 0f && tintStrength < 0.02f) {
+            tintStrength = 0f;
+        }
+
+        final float MAX_ON = 0.22f;   // 開啟時的目標透明度（建議 0.18~0.25）
+        final float LERP_ON = 0.22f;  // 朝目標靠攏的速率（0~1 越大越快）
+        final float LERP_OFF = 0.25f;
+
+        float target = LOCAL_ACTIVE ? MAX_ON : 0f;
+
+        if (entryTicks > 0f) {
+            float t = entryTicks / 6f;          // 1 -> 0
+            target = Math.min(MAX_ON, target + 0.06f * t * t);
+        }
+        if (exitTicks > 0f) {
+            float t = exitTicks / 6f;           // 1 -> 0
+            target = Math.min(MAX_ON, target + 0.04f * t);
+        }
+
+        float k = (target > tintStrength) ? LERP_ON : LERP_OFF;
+        tintStrength += (target - tintStrength) * k;
+
+        if (tintStrength < 0.001f) tintStrength = 0f;
+        if (tintStrength > MAX_ON) tintStrength = MAX_ON;
     }
+
+    /* ===================== 對外 API（舊，相容） ===================== */
+
+    /**
+     * 舊版方法：切換「本地玩家」啟用狀態。
+     * 仍然有效；內部委派到 setActiveFor(localUUID, active)。
+     */
+    @Deprecated
+    public static void setActive(boolean active) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.player == null) return;
+        setActiveFor(mc.player.getUUID(), active);
+    }
+
+    /* ===================== 資料結構 ===================== */
+
+    private static final class Trail {
+        boolean active = false;
+        int sampleCooldown = 0; // 以 tick 計
+        Deque<Sample> samples = new ArrayDeque<>();
+    }
+
+    /** 殘影採樣（不再包含 life；用樣本序位置做透明度衰減） */
+    public record Sample(
+            float x, float y, float z,
+            float yaw, float pitch,
+            float bodyYaw, float headYaw,
+            float limbSwing, float limbSwingAmount,
+            int ageTicks
+    ) {}
 }

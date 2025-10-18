@@ -2,7 +2,6 @@ package com.badlyac.sande.client;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraft.util.Mth;
@@ -12,18 +11,21 @@ import java.util.Random;
 public class CameraShakeHook {
     private static final Random RNG = new Random();
 
+    // 新版 SandeClientState 在啟動/關閉時分別把 entryTicks / exitTicks 設為 6
+    private static final float ENTRY_MAX = 6f;
+    private static final float EXIT_MAX  = 6f;
+
     @SubscribeEvent
     public static void onAngles(ViewportEvent.ComputeCameraAngles e) {
-        // 進/退場都會抖
         float strength = 0f;
 
-        if (SandeClientState.entryTicks > 0) {
-            float t = (float) SandeClientState.entryTicks / SandeClientState.ENTRY_TICKS_MAX; // 1→0
+        if (SandeClientState.entryTicks > 0f) {
+            float t = SandeClientState.entryTicks / ENTRY_MAX; // 1 → 0
             strength += (t * t) * 2.0f; // 進場：先強後弱
         }
-        if (SandeClientState.exitTicks > 0) {
-            float t = (float) SandeClientState.exitTicks / SandeClientState.EXIT_TICKS_MAX; // 1→0
-            strength += (t) * 1.6f; // 退場：一開始也強，快速衰減
+        if (SandeClientState.exitTicks > 0f) {
+            float t = SandeClientState.exitTicks / EXIT_MAX; // 1 → 0
+            strength += t * 1.6f; // 退場：一開始也強，快速衰減
         }
 
         if (strength <= 0f) return;
@@ -39,31 +41,18 @@ public class CameraShakeHook {
 
     @SubscribeEvent
     public static void onFov(ViewportEvent.ComputeFov e) {
-        float add = 0f;
-        if (SandeClientState.entryTicks > 0) {
-            float t = (float) SandeClientState.entryTicks / SandeClientState.ENTRY_TICKS_MAX;
+        double add = 0.0;
+        if (SandeClientState.entryTicks > 0f) {
+            double t = SandeClientState.entryTicks / ENTRY_MAX;
             add += 6.0 * t;
         }
-        if (SandeClientState.exitTicks > 0) {
-            float t = (float) SandeClientState.exitTicks / SandeClientState.EXIT_TICKS_MAX;
+        if (SandeClientState.exitTicks > 0f) {
+            double t = SandeClientState.exitTicks / EXIT_MAX;
             add += 4.0 * t;
         }
-        if (add != 0) e.setFOV(e.getFOV() + add);
+        if (add != 0.0) e.setFOV(e.getFOV() + add);
     }
 
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent e) {
-        if (e.phase != TickEvent.Phase.END) return;
-        var mc = net.minecraft.client.Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) return;
-
-        boolean firstPerson = mc.options.getCameraType() == net.minecraft.client.CameraType.FIRST_PERSON;
-        var cam = mc.gameRenderer.getMainCamera();
-        var cp = cam.getPosition();
-        // 通知 SandeClientState 是否第一人稱，以及相機座標（用來剔除貼臉樣本）
-        com.badlyac.sande.client.SandeClientState.updateCameraState(firstPerson, mc.player, cp.x, cp.y, cp.z);
-
-        // 你原本呼叫的曲線遞減（進/退場）
-        com.badlyac.sande.client.SandeClientState.tickEntryExitCurves();
-    }
+    // ❌ 舊版這裡會呼叫 updateCameraState(...) / tickEntryExitCurves()
+    // 這兩個在新版 SandeClientState 已移除；採樣與動畫更新請交給 ClientTickHook.onClientTick()
 }

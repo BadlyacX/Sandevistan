@@ -13,7 +13,7 @@ public class ClientTickHook {
     public static void onClientTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-        SandeClientState.tickClient(mc.player);
+        if (mc.player == null || mc.level == null) return;
+        SandeClientState.tickClientAll(mc);
     }
 }
