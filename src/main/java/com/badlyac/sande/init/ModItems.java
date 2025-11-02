@@ -18,13 +18,11 @@ public final class ModItems {
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(Registries.ITEM, SandeForge.MODID);
 
-    // id = sande:sandevistan（胸甲）
     public static final RegistryObject<Item> SANDEVISTAN =
             ITEMS.register("sandevistan", () ->
                     new SandevistanArmorItem(ArmorMaterials.NETHERITE, ArmorItem.Type.CHESTPLATE,
                             new Item.Properties().stacksTo(1).rarity(Rarity.RARE)));
 
-    // 方便測試：放到工具分頁
     @SubscribeEvent
     public static void creative(BuildCreativeModeTabContentsEvent e) {
         e.accept(SANDEVISTAN.get());

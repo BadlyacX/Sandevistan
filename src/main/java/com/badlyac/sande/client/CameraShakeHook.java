@@ -11,7 +11,6 @@ import java.util.Random;
 public class CameraShakeHook {
     private static final Random RNG = new Random();
 
-    // 新版 SandeClientState 在啟動/關閉時分別把 entryTicks / exitTicks 設為 6
     private static final float ENTRY_MAX = 6f;
     private static final float EXIT_MAX  = 6f;
 
@@ -21,11 +20,11 @@ public class CameraShakeHook {
 
         if (SandeClientState.entryTicks > 0f) {
             float t = SandeClientState.entryTicks / ENTRY_MAX; // 1 → 0
-            strength += (t * t) * 2.0f; // 進場：先強後弱
+            strength += (t * t) * 2.0f;
         }
         if (SandeClientState.exitTicks > 0f) {
             float t = SandeClientState.exitTicks / EXIT_MAX; // 1 → 0
-            strength += t * 1.6f; // 退場：一開始也強，快速衰減
+            strength += t * 1.6f;
         }
 
         if (strength <= 0f) return;
@@ -52,7 +51,4 @@ public class CameraShakeHook {
         }
         if (add != 0.0) e.setFOV(e.getFOV() + add);
     }
-
-    // ❌ 舊版這裡會呼叫 updateCameraState(...) / tickEntryExitCurves()
-    // 這兩個在新版 SandeClientState 已移除；採樣與動畫更新請交給 ClientTickHook.onClientTick()
 }

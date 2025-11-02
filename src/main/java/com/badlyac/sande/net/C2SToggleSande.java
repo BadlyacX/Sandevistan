@@ -14,7 +14,6 @@ public record C2SToggleSande() {
         var c = ctx.get();
         var sender = c.getSender();
         if (sender != null) {
-            // 在主執行緒切換
             sender.getServer().execute(() -> SandeForge.toggle(sender));
         }
         c.setPacketHandled(true);

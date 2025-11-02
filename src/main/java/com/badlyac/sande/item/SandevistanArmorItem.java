@@ -12,7 +12,6 @@ public class SandevistanArmorItem extends ArmorItem {
         super(material, type, props);
     }
 
-    /** 是否穿著本模組的 Sandevistan 胸甲 */
     public static boolean isWornBy(Player p) {
         ItemStack chest = p.getItemBySlot(EquipmentSlot.CHEST);
         return !chest.isEmpty() && chest.getItem() instanceof SandevistanArmorItem;

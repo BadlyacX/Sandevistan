@@ -28,11 +28,10 @@ import java.util.*;
 public class SandeForge {
     public static final String MODID = "sande";
 
-    // ---- 可調參數 ----
     private static final double MOVE_ADD = 0.1;     // 追加移速
     private static final double ATKSPD_ADD = 15.0;   // 追加攻速
     private static final int HIT_IFRAMES = 2;        // 受擊無敵時間
-    private static final int MAX_ACTIVE_TICKS = 10 * 20; // ✅ 最長啟動 10 秒
+    private static final int MAX_ACTIVE_TICKS = 10 * 20; // 最長啟動 10 秒
 
     private static final UUID MOVE_UUID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID ATKS_UUID = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -41,18 +40,18 @@ public class SandeForge {
     private static final Map<UUID, Integer> ACTIVE_REMAIN = new HashMap<>();
 
     public SandeForge() {
-        var modBus   = FMLJavaModLoadingContext.get().getModEventBus(); // get() is deprecated since version 1.21.1 and marked for removal
+        var modBus = FMLJavaModLoadingContext.get().getModEventBus(); // get() is deprecated since version 1.21.1 and marked for removal
         var forgeBus = MinecraftForge.EVENT_BUS;
 
         forgeBus.register(this);
         com.badlyac.sande.net.Network.init();
         com.badlyac.sande.init.ModSounds.SOUNDS.register(modBus);
-        try { com.badlyac.sande.init.ModItems.ITEMS.register(modBus); } catch (Throwable ignore) {}
+        try {
+            com.badlyac.sande.init.ModItems.ITEMS.register(modBus);
+        } catch (Throwable ignore) {
+        }
     }
 
-    /* ======================================================================
-     * 切換（由 C2S 封包或其他入口呼叫）
-     * ====================================================================== */
     public static void toggle(ServerPlayer p) {
         if (p == null) return;
         if (!com.badlyac.sande.item.SandevistanArmorItem.isWornBy(p)) {
@@ -110,9 +109,6 @@ public class SandeForge {
         FreezeManager.setActive(id, false);
     }
 
-    /* ======================================================================
-     * 伺服器 Tick：倒數自動關（無冷卻）
-     * ====================================================================== */
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
@@ -143,9 +139,6 @@ public class SandeForge {
         }
     }
 
-    /* ======================================================================
-     * 事件：降低 i-frames（只有在攻擊者為啟用狀態時）
-     * ====================================================================== */
     @SubscribeEvent
     public void onLivingHurt(LivingHurtEvent e) {
         if (!(e.getSource().getEntity() instanceof Player attacker)) return;
@@ -166,9 +159,6 @@ public class SandeForge {
         e.setDamageMultiplier(0.0F);
     }
 
-    /* ======================================================================
-     * 輔助：屬性・玩家查找・音效
-     * ====================================================================== */
     private static void applyAttr(LivingEntity e, Attribute attr, UUID uuid, String name, double value, AttributeModifier.Operation op) {
         AttributeInstance inst = e.getAttribute(attr);
         if (inst == null) return;

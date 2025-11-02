@@ -8,14 +8,12 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class WorldTintOverlay {
-    // 比較接近你截圖的青綠，稍微再淡一點
     private static final float TINT_R = 0.05f;
     private static final float TINT_G = 1.00f;
     private static final float TINT_B = 0.15f;
 
     @SubscribeEvent
     public static void onGuiOverlayPre(RenderGuiOverlayEvent.Pre e) {
-        // 在準備畫準星前先鋪底（必定觸發；且之後的 HUD 會蓋上去，不會被濾鏡遮）
         if (e.getOverlay() != VanillaGuiOverlay.CROSSHAIR.type()) return;
 
         boolean show = SandeClientState.LOCAL_ACTIVE

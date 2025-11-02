@@ -11,7 +11,6 @@ public final class ModSounds {
     public static final DeferredRegister<SoundEvent> SOUNDS =
             DeferredRegister.create(Registries.SOUND_EVENT, SandeForge.MODID);
 
-    // 事件 ID 必須對應 sounds.json 的 key
     public static final RegistryObject<SoundEvent> SANDE_START =
             SOUNDS.register("sande_start",
                     () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(SandeForge.MODID, "sande_start")));
