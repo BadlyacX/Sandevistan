@@ -2,10 +2,7 @@ package com.badlyac.sande.init;
 
 import com.badlyac.sande.SandeForge;
 import com.badlyac.sande.item.SandevistanArmorItem;
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.ArmorMaterials;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Rarity;
+import net.minecraft.world.item.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -25,7 +22,9 @@ public final class ModItems {
 
     @SubscribeEvent
     public static void creative(BuildCreativeModeTabContentsEvent e) {
-        e.accept(SANDEVISTAN.get());
+        if (e.getTabKey() == CreativeModeTabs.COMBAT) {
+            e.accept(SANDEVISTAN.get());
+        }
     }
 
     private ModItems() {}
